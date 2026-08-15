@@ -1,0 +1,22 @@
+DOCKER - THEORY
+===============
+
+WHAT IS DOCKER?
+Docker is a containerization platform that packages applications, dependencies, and runtime environment into isolated, portable units called containers.
+
+PROBLEMS IT SOLVES:
+1. Environment Consistency: Eliminates "works on my machine" problem by ensuring same environment across dev, test, and production
+2. Dependency Management: Bundles all libraries, tools, and versions together
+3. Scalability: Easy to replicate and run multiple instances
+4. Isolation: Containers run independently, preventing conflicts
+5. Deployment Simplification: Ship container instead of dealing with infrastructure setup
+
+HOW WE'RE USING DOCKER IN PHASE 1:
+- Base Image: Using official Node.js image (FROM node)
+- Working Directory: Set /app as container's working directory
+- Dependencies: Copy package.json and run npm install inside container
+- Application: Copy application files and run index.js with NODE runtime
+- Benefit: Anyone can run `docker run` and get exact same environment regardless of their OS/setup
+
+KEY ADVANTAGE FOR THIS SETUP:
+Instead of requiring developers to install Node.js manually, Docker handles everything. The Dockerfile is like a blueprint that creates consistent environments every time.
