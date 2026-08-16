@@ -2,7 +2,9 @@ services:
   backend:
     build: ./backend
     ports:
-      - 5001:5001
+      - 5003:5003
+    env_file:
+      - ./backend/.env
   frontend:
     build: ./frontend
     ports:
