@@ -4,6 +4,8 @@ import connectDB from "./config/db.js"; // Import the connectDB function
 import User from "./model/user.model.js"; // Import the User model
 import Redis from "ioredis"; 
 import rateLimitter from "./middleware/rateLimit.js"; // Import the rateLimitter middleware
+import sendEmail from "./config/sendEmail.js"; // Import the sendEmail function
+import emailQueue from "./queue.js"; // Import the emailQueue
 dotenv.config();
 
 const app = express();
@@ -24,6 +26,7 @@ app.post("/create", async (req, res) => {
         email,
         password
     });
+    await emailQueue.add("sendEmail", { email }); //add the job to the queue, it will be processed by the worker
     return res.status(201).json({
         success: true,
         message: "User created successfully",
