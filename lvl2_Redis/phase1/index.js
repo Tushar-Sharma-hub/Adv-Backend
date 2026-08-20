@@ -53,6 +53,37 @@ app.get("/get-with-redis", async (req, res) => {
     return res.json(user);
 })
 
+app.post("/send-otp",async (req,res)=>{
+    const {email} = req.body;
+    //generate a random 6 digit number
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    //store the otp in redis with a ttl of 5 minutes
+    await redis.set(`otp:${email}`, otp, "EX", 300); //here we are writing key as otp:email so that we can easily retrieve the otp for a specific email
+    // ex means expiration time in seconds, so 300 seconds = 5 minutes, it will automatically delete the otp after 5 minutes
+    // Delete the otp from redis
+    await redis.del(`otp:${email}`);
+    return res.status(200).json({
+        success: true,
+        message: "OTP sent successfully",
+        otp
+    });
+})
+
+app.post("/verify-otp",async (req,res)=>{
+    const {email} = req.body;
+    const otp = await redis.get(`otp:${email}`);
+    if(!otp){
+        return res.status(400).json({
+            success: false,
+            message: "Invalid or expired OTP"
+        });
+    }
+    return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully"
+    });
+});
+
 app.listen(PORT, () => {
     connectDB(); // Call the connectDB function to establish the MongoDB connection
     console.log(`Server is running on port ${PORT}`);
