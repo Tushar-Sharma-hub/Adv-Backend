@@ -3,11 +3,12 @@ import dotenv from "dotenv";
 import connectDB from "./config/db.js"; // Import the connectDB function
 import User from "./model/user.model.js"; // Import the User model
 import Redis from "ioredis"; 
+import rateLimitter from "./middleware/rateLimit.js"; // Import the rateLimitter middleware
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const redis = new Redis(process.env.REDIS_URL);
+export const redis = new Redis(process.env.REDIS_URL);
 
 app.use(express.json()); // Middleware to parse JSON request bodies
 app.get("/", (req, res) => {
@@ -30,7 +31,7 @@ app.post("/create", async (req, res) => {
     });
 });
 
-app.get("/get", async (req, res) => {
+app.get("/get", rateLimitter, async (req, res) => {
     const users = await User.find({});
     return res.status(200).json({
         success: true,
