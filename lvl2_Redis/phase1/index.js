@@ -4,7 +4,6 @@ import connectDB from "./config/db.js"; // Import the connectDB function
 import User from "./model/user.model.js"; // Import the User model
 import Redis from "ioredis"; 
 import rateLimitter from "./middleware/rateLimit.js"; // Import the rateLimitter middleware
-import sendEmail from "./config/sendEmail.js"; // Import the sendEmail function
 import emailQueue from "./queue.js"; // Import the emailQueue
 dotenv.config();
 
