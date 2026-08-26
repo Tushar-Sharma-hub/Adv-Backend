@@ -13,7 +13,7 @@ export const redis = new Redis(process.env.REDIS_URL);
 
 app.use(express.json()); // Middleware to parse JSON request bodies
 app.get("/", (req, res) => {
-    res.send("Hello from Redis!");
+    res.send(`Hello from server ${process.env.SERVER_NAME}! `);
 });
 
 app.post("/create", async (req, res) => {
