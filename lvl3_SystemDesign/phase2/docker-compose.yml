@@ -1,0 +1,40 @@
+services:
+
+  nginx:
+    image: nginx
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+  redis:
+    image: redis:latest                         
+    ports:
+      - "6379:6379"
+
+  server1:
+    build: ./server
+    env_file:
+      - ./server/.env
+    environment:
+      - SERVER_NAME=You are using Server 1
+    ports:
+      - 6001:7000
+
+  server2:
+    build: ./server
+    env_file:
+      - ./server/.env
+    environment:
+      - SERVER_NAME=You are using Server 2
+    ports:
+      - 6002:7000
+
+  server3:
+    build: ./server
+    env_file:
+      - ./server/.env
+    environment:
+      - SERVER_NAME=You are using Server 3
+    ports:
+      - 6003:7000
