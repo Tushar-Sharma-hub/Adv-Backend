@@ -22,6 +22,11 @@ app.get("/", (req, res) => {
 //     model: "gemini-3.7-flash",
 //     input: [
 //         {
+//            We can set roles, like system,user,human and assistant. 
+//            System role is used to set the behavior of the model, 
+//            user role is used to provide input from the user, 
+//            human role is used to provide input from a human, and
+//            assistant role is used to provide input from an AI assistant.
 //             role: "system",
 //             parts: [{ text: "you are a assistant and your name is jarvis.if you don't know the answer then don't give incorrect answer" }]
 //         },
@@ -46,11 +51,6 @@ app.post("/ai", async (req, res) => {
   const { prompt } = req.body;
 
   const response = await llm.invoke([
-    //We can set roles, like system,user,human and assistant. 
-    //System role is used to set the behavior of the model, 
-    // user role is used to provide input from the user, 
-    // human role is used to provide input from a human, and
-    // assistant role is used to provide input from an AI assistant.
     {
       role: "system", 
       content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
