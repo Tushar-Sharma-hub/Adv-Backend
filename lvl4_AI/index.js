@@ -1,7 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import { GoogleGenAI } from "@google/genai"; //without langchain
-import { ChatGoogle } from "@langchain/google"; //with langchain
 import { ChatGroq } from "@langchain/groq";
 
 const app = express();
