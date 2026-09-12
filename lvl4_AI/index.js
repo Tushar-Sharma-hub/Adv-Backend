@@ -1,105 +1,132 @@
-import "dotenv/config";
-import express from "express";
-import { ChatGroq } from "@langchain/groq";
-import { StateGraph, Annotation } from "@langchain/langgraph";
+import express from "express"
+import dotenv from "dotenv"
+import { ChatGroq } from "@langchain/groq"
+import { Annotation, MemorySaver, MessagesAnnotation, StateGraph } from "@langchain/langgraph"
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { TavilySearch } from "@langchain/tavily";
+dotenv.config()
+const app = express()
+const port = 5000
+app.use(express.json())
 
-const app = express();
-const PORT = 5050;
-app.use(express.json());
+//without Langchain
 
-app.get("/", (req, res) => {
-  res.send("Hello from lvl4!");
-});
-
-//without langchain
 // const ai = new GoogleGenAI({
-//   apiKey: process.env.GEMINI_API_KEY
-// });
+//     apiKey: process.env.GEMINI_API_KEY
+// })
 
 // app.post("/ai", async (req, res) => {
-//   const { prompt } = req.body;
+//     const { input } = req.body
+//     const response = await ai.models.generateContent({
+//         model: "gemini-3.5-flash",
+//         contents: [
+//             {
+//                 role: "system",
+//                 parts: [{ text: "you are a assistant and your name is jarvis.if you don't know the answer then don't give incorrect answer" }]
+//             },
+//             {
+//                 role: "user",
+//                 parts: [{ text: input }]
+//             }
+//         ]
+//     })
 
-//   const interaction = await ai.interactions.create({
-//     model: "gemini-3.7-flash",
-//     input: [
-//         {
-//            We can set roles, like system,user,human and assistant. 
-//            System role is used to set the behavior of the model, 
-//            user role is used to provide input from the user, 
-//            human role is used to provide input from a human, and
-//            assistant role is used to provide input from an AI assistant.
-//             role: "system",
-//             parts: [{ text: "you are a assistant and your name is jarvis.if you don't know the answer then don't give incorrect answer" }]
-//         },
-//         {
-//             role: "user",
-//             parts: [{ text: input }]
-//         }
-//     ],
-//   });
-
-//   res.json({'ai':interaction.output_text});
-// });
+//     return res.status(200).json({ "ai:": response.text })
+// })
 
 //with langchain
-const llm = new ChatGroq({
-  model: "openai/gpt-oss-120b",
-  temperature: 0.7, //temperature controls the randomness of the output. Higher values (e.g., 0.8) make the output more random, while lower values (e.g., 0.2) make it more focused and deterministic.
-  maxTokens: 100, //maxTokens limits the length of the generated output.
-  maxRetries: 3, //maxRetries specifies the number of times to retry the request in case of failures.
+
+
+const tool = new TavilySearch({
+    maxResults: 5,
+    topic: "general",
 });
 
-const State=Annotation.Root({
-  prompt: Annotation,
-  aiMsg: Annotation,
-})
+const checkPointer = new MemorySaver()
+
+
+const tools = [tool]
+const toolNode = new ToolNode(tools)
+
+const llm = new ChatGroq({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.7,
+    maxTokens: 100,
+    maxRetries: 2
+}).bindTools(tools)
+
+
 
 const callLLM = async (state) => {
-  console.log("State in callLLM:", state);
-  const response = await llm.invoke([
-      {
-        role: "system", 
-        content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
-      },
-      {
-        role: "human", 
-        content: state.prompt
-      }
-  ]);
-  return { aiMsg: response };
+    console.log("state:", state)
+
+    const response = await llm.invoke([
+        {
+            role: "system",
+            content: `You are Jarvis AI assistant
+            Use conversation memory first.
+            Only use tools when the answer requires
+            external real-time information like:
+            weather, news, web search, stock prices etc.
+            Do NOT call tools for simple conversation,
+            memory-based questions, greetings,
+            or personal context`
+        },
+        ...state.messages
+    ])
+
+    return { messages: [response] }
 }
 
-const graph = new StateGraph(State)
-.addNode("agent",callLLM)
-.addEdge("_start_", "agent")
-.addEdge("agent", "__end__");
+const shouldContinue = async (state) => {
+    const lastMessage = state.messages[state.messages.length - 1]
+    if (lastMessage.tool_calls.length > 0) {
+        return "tools"
+    } else {
+        return "__end__"
+    }
+}
+
+
+const graph = new StateGraph(MessagesAnnotation)
+    .addNode("agent", callLLM)
+    .addNode("tools", toolNode)
+    .addEdge("__start__", "agent")
+    .addEdge("tools", "agent")
+    .addConditionalEdges("agent", shouldContinue)
+    .compile({ checkpointer: checkPointer })
+
+
+
 
 app.post("/ai", async (req, res) => {
-  const { input } = req.body;
+    const { input } = req.body
 
-  const response = await graph.invoke({ prompt: input });
-  console.log(response); 
+    const response = await graph.invoke(
+        {
+            messages: [
+                {
+                    role: "user",
+                    content: input
+                }
+            ]
+        },
+        { configurable: { thread_id: "user123" } }
 
-  res.json({ ai: response });
-});
+    )
+    console.log(response.messages)
 
-// app.post("/ai", async (req, res) => {
-//   const { prompt } = req.body;
+    return res.status(200).json({ "ai:": response.messages[response.messages.length - 1].content })
+})
 
-//   const response = await llm.invoke([
-//     {
-//       role: "system", 
-//       content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
-//   },
-//     {
-//       role: "human", 
-//       content: prompt
-//     }
-//   ]);
 
-//   res.json({ ai: response });
-// });
 
-app.listen(PORT, () => { 
-  console.log(`Server is running on port ${PORT}`);
-});
+
+app.get("/", (req, res) => {
+    return res.json({ message: "hello from level4" })
+})
+
+
+app.listen(port, () => {
+    console.log("server started")
+})
