@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { ChatGroq } from "@langchain/groq";
+import { StateGraph, Annotation } from "@langchain/langgraph";
 
 const app = express();
 const PORT = 5050;
@@ -47,23 +48,58 @@ const llm = new ChatGroq({
   maxTokens: 100, //maxTokens limits the length of the generated output.
   maxRetries: 3, //maxRetries specifies the number of times to retry the request in case of failures.
 });
-app.post("/ai", async (req, res) => {
-  const { prompt } = req.body;
 
+const State=Annotation.Root({
+  prompt: Annotation,
+  aiMsg: Annotation,
+})
+
+const callLLM = async (state) => {
+  console.log("State in callLLM:", state);
   const response = await llm.invoke([
-    {
-      role: "system", 
-      content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
-  },
-    {
-      role: "human", 
-      content: prompt
-    }
+      {
+        role: "system", 
+        content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
+      },
+      {
+        role: "human", 
+        content: state.prompt
+      }
   ]);
+  return { aiMsg: response };
+}
+
+const graph = new StateGraph(State)
+.addNode("agent",callLLM)
+.addEdge("_start_", "agent")
+.addEdge("agent", "__end__");
+
+app.post("/ai", async (req, res) => {
+  const { input } = req.body;
+
+  const response = await graph.invoke({ prompt: input });
+  console.log(response); 
 
   res.json({ ai: response });
 });
 
-app.listen(PORT, () => {
+// app.post("/ai", async (req, res) => {
+//   const { prompt } = req.body;
+
+//   const response = await llm.invoke([
+//     {
+//       role: "system", 
+//       content: "You are a helpful assistant.Your name is Oggy. If you don't know the answer then don't give incorrect answer."
+//   },
+//     {
+//       role: "human", 
+//       content: prompt
+//     }
+//   ]);
+
+//   res.json({ ai: response });
+// });
+
+app.listen(PORT, () => { 
   console.log(`Server is running on port ${PORT}`);
 });
